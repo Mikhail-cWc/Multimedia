@@ -45,3 +45,69 @@ class MyLogisticRegression:
     def predict(self, X):
         P = self.predict_proba(X)
         return np.argmax(P, axis=1)
+
+
+class MyLinearRegression:
+    def __init__(
+        self,
+        fit_intercept=True,
+        learning_rate=0.01,
+        n_iterations=1000,
+        batch_size=None
+    ):
+        self.fit_intercept = fit_intercept
+        self.learning_rate = learning_rate
+        self.n_iterations = n_iterations
+        self.batch_size = batch_size
+        self.coefficients_ = None
+
+    def _add_intercept(self, X):
+        if not self.fit_intercept:
+            return X
+        ones = np.ones((X.shape[0], 1), dtype=float)
+        return np.hstack([ones, X])
+
+    def _mse_gradient(self, X, y, beta):
+        y_pred = X.dot(beta)
+        error = (y_pred - y)
+        grad = (2 / X.shape[0]) * X.T.dot(error)
+        return grad
+
+    def fit(self, X, y):
+        X = np.array(X, dtype=float)
+        y = np.array(y, dtype=float).reshape(-1, 1)  # (n_samples, 1)
+
+        # Добавим столбец единиц, если fit_intercept=True
+        X = self._add_intercept(X)
+
+        n_samples, n_features = X.shape
+
+        np.random.seed(12)
+        beta = np.random.randn(n_features, 1)
+
+        if self.batch_size is None or self.batch_size > n_samples:
+            self.batch_size = n_samples
+
+        for i in range(self.n_iterations):
+            indices = np.random.permutation(n_samples)
+
+            for start_idx in range(0, n_samples, self.batch_size):
+                end_idx = start_idx + self.batch_size
+                batch_indices = indices[start_idx:end_idx]
+
+                X_batch = X[batch_indices]
+                y_batch = y[batch_indices]
+
+                grad = self._mse_gradient(X_batch, y_batch, beta)
+
+                beta = beta - self.learning_rate * grad
+
+        self.coefficients_ = beta
+
+    def predict(self, X):
+        X = np.array(X, dtype=float)
+        X = self._add_intercept(X)  # учитываем intercept, если он есть
+
+        y_pred = X.dot(self.coefficients_)
+
+        return y_pred.ravel()
